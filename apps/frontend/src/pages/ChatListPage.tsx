@@ -80,8 +80,8 @@ export const ChatListPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
-      <div className="max-w-4xl mx-auto p-[20px]">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[20px]">
+      <div className="max-w-4xl mx-auto">
         <div className="bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
