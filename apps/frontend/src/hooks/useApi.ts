@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { statusApi, chatApi, chatManagementApi, messageApi } from '../services/api';
+import { statusApi, chatApi, chatManagementApi, messageApi, fileApi, functionApi } from '../services/api';
 import type { 
   Message, 
   CreateChatRequest, 
@@ -13,6 +13,9 @@ export const queryKeys = {
   status: ['status'],
   chats: ['chats'],
   chat: (id: string) => ['chat', id],
+  files: (chatId?: string | null) => ['files', chatId],
+  fileStats: (chatId?: string | null) => ['fileStats', chatId],
+  functions: ['functions'],
 } as const;
 
 // Status hooks
@@ -130,5 +133,114 @@ export const useGenerateResponse = () => {
       // Invalidate chats list to update timestamps
       queryClient.invalidateQueries({ queryKey: queryKeys.chats });
     },
+  });
+}; 
+
+// File hooks
+export const useFilesByChat = (chatId: string | null) => {
+  return useQuery({
+    queryKey: queryKeys.files(chatId),
+    queryFn: () => fileApi.getFilesByChat(chatId!),
+    enabled: !!chatId,
+  });
+};
+
+export const useUploadFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ file, chatId }: { file: File; chatId?: string }) => fileApi.uploadFile(file, chatId),
+    onSuccess: (_, { chatId }) => {
+      if (chatId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.files(chatId) });
+      }
+    },
+  });
+};
+
+export const useProcessPDF = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (fileId: string) => fileApi.processPDF(fileId),
+    onSuccess: (_, fileId) => {
+      // Invalidate files query to refresh file status
+      queryClient.invalidateQueries({ queryKey: queryKeys.files });
+    },
+  });
+};
+
+export const useDeleteFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (fileId: string) => fileApi.deleteFile(fileId),
+    onSuccess: () => {
+      // Invalidate files query to refresh file list
+      queryClient.invalidateQueries({ queryKey: queryKeys.files });
+    },
+  });
+};
+
+export const useSearchInFile = () => {
+  return useMutation({
+    mutationFn: ({ fileId, query, topK }: { fileId: string; query: string; topK?: number }) => 
+      fileApi.searchInFile(fileId, query, topK),
+  });
+};
+
+// Enhanced file hooks
+export const useFileStats = (chatId: string | null) => {
+  return useQuery({
+    queryKey: queryKeys.fileStats(chatId),
+    queryFn: () => fileApi.getFileStats(chatId!),
+    enabled: !!chatId,
+  });
+};
+
+export const useSearchAcrossAllFiles = () => {
+  return useMutation({
+    mutationFn: ({ chatId, query, topK }: { chatId: string; query: string; topK?: number }) => 
+      fileApi.searchAcrossAllFiles(chatId, query, topK),
+  });
+};
+
+export const useUpdateFileMetadata = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ fileId, metadata }: { fileId: string; metadata: any }) => 
+      fileApi.updateFileMetadata(fileId, metadata),
+    onSuccess: () => {
+      // Invalidate files query to refresh file list
+      queryClient.invalidateQueries({ queryKey: queryKeys.files });
+    },
+  });
+};
+
+export const useGetFileContent = () => {
+  return useMutation({
+    mutationFn: (fileId: string) => fileApi.getFileContent(fileId),
+  });
+};
+
+// Function hooks
+export const useFunctions = () => {
+  return useQuery({
+    queryKey: queryKeys.functions,
+    queryFn: functionApi.getFunctions,
+  });
+};
+
+export const useExecuteFunction = () => {
+  return useMutation({
+    mutationFn: ({ name, args }: { name: string; args: any }) => 
+      functionApi.executeFunction(name, args),
+  });
+};
+
+export const useParseAndExecuteFunctions = () => {
+  return useMutation({
+    mutationFn: (text: string) => functionApi.parseAndExecuteFunctions(text),
   });
 }; 

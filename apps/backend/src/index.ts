@@ -7,6 +7,8 @@ import { config } from './config/env';
 import chatRoutes from './routes/chatRoutes';
 import chatManagementRoutes from './routes/chatManagementRoutes';
 import voiceRoutes from './routes/voiceRoutes';
+import fileRoutes from './routes/fileRoutes';
+import functionRoutes from './routes/functionRoutes';
 import healthRoutes from './routes/healthRoutes';
 
 // Load environment variables
@@ -34,6 +36,8 @@ mongoose.connect(config.mongodb.uri)
 app.use(`${config.api.prefix}`, chatRoutes);
 app.use(`${config.api.prefix}`, chatManagementRoutes);
 app.use(`${config.api.prefix}`, voiceRoutes);
+app.use(`${config.api.prefix}`, fileRoutes);
+app.use(`${config.api.prefix}`, functionRoutes);
 
 // Health check route (no prefix)
 app.use('/', healthRoutes);

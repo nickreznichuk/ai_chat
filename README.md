@@ -2,38 +2,59 @@
 
 A modern AI chat application built with React, TypeScript, and Express, featuring integration with Ollama's Gemma3n model. The application includes chat management, real-time messaging, voice input with automatic transcription, and a beautiful responsive UI.
 
-## 🚀 Features
+## ✨ Features
 
-- **🤖 AI Integration**: Seamless integration with Ollama's Gemma3n model
-- **🎤 Voice Input**: Speech-to-text functionality using Whisper.cpp with automatic message sending
-- **💬 Chat Management**: Create, view, and manage multiple chat conversations
-- **💾 Message Persistence**: All messages are stored in MongoDB with optimized database structure
-- **🎨 Modern UI**: Beautiful responsive design with Tailwind CSS and custom animations
-- **⚡ Real-time Updates**: Instant message updates with React Query
-- **📱 Responsive Design**: Works perfectly on desktop and mobile devices
-- **🔄 Auto-scroll**: Automatic scrolling to latest messages
-- **🎯 Type Safety**: Full TypeScript support throughout the application
-- **🎵 Voice Animations**: Beautiful animations during recording and transcription
-- **🚀 Auto-send**: Voice messages are automatically sent after transcription
+### 🤖 AI Chat
+- **Local AI Integration**: Powered by Ollama with Gemma3n model
+- **Real-time Conversations**: Interactive chat interface with streaming responses
+- **Markdown Support**: AI responses are rendered in beautiful Markdown format with syntax highlighting
+- **Two-step Message Handling**: Separate message sending and response generation for better UX
+- **Message Status Tracking**: Visual indicators for message states (sending, generating, completed, error)
+- **Function Calling**: Automatic detection and execution of functions from natural language
 
-## 🏗️ Architecture
+### 📄 Document Analysis (RAG System)
+- **PDF Upload**: Drag & drop PDF file upload with size validation
+- **Document Processing**: Automatic text extraction and chunking for vector search
+- **AI-Powered Search**: Ask questions about uploaded documents using semantic search
+- **Context-Aware Responses**: AI provides answers based on relevant document sections
+- **File Management**: View, process, and delete uploaded documents
+- **Cross-File Search**: Search across all uploaded documents simultaneously
+- **File Statistics**: View detailed statistics about uploaded files
+- **Metadata Management**: Add titles, descriptions, and tags to files
 
-### Backend (Express + TypeScript)
-- **Modular Route Structure**: Organized routes in separate files for better maintainability
-- **Separate Message Model**: Optimized database structure with dedicated Message collection
-- **RESTful API**: Clean API endpoints for chat management and voice processing
-- **MongoDB Integration**: Persistent storage with Mongoose ODM
-- **Ollama Service**: Integration with local Ollama API
-- **Voice Processing**: FFmpeg integration for audio conversion and Whisper.cpp for transcription
-- **Error Handling**: Comprehensive error handling and validation
+### 🎤 Voice Input
+- **Speech-to-Text**: Local voice transcription using Whisper.cpp
+- **Auto-send**: Transcribed text automatically sent to chat
+- **Visual Feedback**: Recording and processing animations
+- **Background Processing**: Non-blocking audio transcription
 
-### Frontend (React + TypeScript)
+### 🔧 Function Calling
+- **Weather Information**: Get current weather for any location
+- **Email Sending**: Send emails to specified recipients
+- **Calendar Events**: Add events to user's calendar
+- **File Operations**: List and search through uploaded files
+- **Natural Language Parsing**: Automatic function detection from user messages
+- **Real-time Execution**: Functions execute immediately when detected
+- **Visual Results**: Function calls and results displayed in chat interface
+
+### 💬 Chat Management
+- **Persistent Storage**: All conversations saved to MongoDB
+- **Chat History**: Browse and switch between previous conversations
+- **Sidebar Navigation**: Collapsible sidebar for easy chat switching
+- **Chat Operations**: Create, update, and delete chats
+
+### 🎨 Modern UI/UX
+- **Responsive Design**: Works seamlessly on desktop and mobile
+- **Tailwind CSS**: Beautiful, modern styling with utility-first approach
+- **Loading States**: Skeleton loaders and spinners for smooth UX
+- **Dark Mode Ready**: Clean, accessible interface design
+
+### 🔧 Technical Features
+- **TypeScript**: Full type safety across frontend and backend
 - **React Query**: Efficient data fetching and caching
-- **React Router**: Client-side routing for better UX
-- **Tailwind CSS**: Modern, responsive styling with custom animations
-- **Custom Hooks**: Reusable API hooks for data management
-- **Component Architecture**: Modular, maintainable components
-- **Voice Input**: Web Audio API integration with MediaRecorder
+- **Modular Architecture**: Organized code structure with separate routes and services
+- **Environment Configuration**: Centralized configuration management
+- **Error Handling**: Comprehensive error handling and user feedback
 
 ## 📁 Project Structure
 
@@ -275,47 +296,73 @@ curl http://localhost:3001/api/voice/status
 - `PUT /api/chats/:id` - Update chat
 - `DELETE /api/chats/:id` - Delete chat
 
-### Chat Messaging
-- `POST /api/chat` - Send message to AI model
+### Messaging
+- `POST /api/chat` - Legacy chat endpoint (backward compatibility)
+- `POST /api/messages/send` - Send message and save to database
+- `POST /api/messages/generate-response` - Generate AI response for a message
 - `GET /api/status` - Check Ollama service status
 
 ### Voice Input
 - `POST /api/voice/transcribe` - Transcribe audio to text
 - `GET /api/voice/status` - Check Whisper service status
 
+### File Management
+- `POST /api/files/upload` - Upload PDF file
+- `POST /api/files/:fileId/process` - Process PDF and generate embeddings
+- `POST /api/files/:fileId/search` - Search for relevant chunks in document
+- `GET /api/chats/:chatId/files` - Get files for specific chat
+- `DELETE /api/files/:fileId` - Delete file
+- `GET /api/chats/:chatId/files/stats` - Get file statistics for chat
+- `POST /api/chats/:chatId/files/search` - Search across all files in chat
+- `PUT /api/files/:fileId/metadata` - Update file metadata
+- `GET /api/files/:fileId/content` - Get file content and chunks
+
+### Function Calling
+- `GET /api/functions` - Get available functions
+- `POST /api/functions/execute` - Execute a specific function
+- `POST /api/functions/parse` - Parse text and execute detected functions
+
 ### Health Check
 - `GET /health` - Server health status
 
 ## 🎯 Usage
 
-### Creating a New Chat
-1. Open the application at `http://localhost:5173`
-2. Click "New Chat" button
-3. Start typing your message
-4. Press Enter or click the send button
+### Starting the Application
+1. **Start Backend**: `cd apps/backend && yarn dev`
+2. **Start Frontend**: `cd apps/frontend && yarn dev`
+3. **Access Application**: Open `http://localhost:5173` in your browser
 
-### Managing Chats
-- **View Chats**: All your conversations are listed on the main page
-- **Switch Chats**: Click on any chat to continue the conversation
-- **Delete Chats**: Hover over a chat and click the delete icon
-- **Auto-save**: Messages are automatically saved to the database
+### Basic Chat Features
+- **New Chat**: Click "New Chat" to start a conversation
+- **Send Messages**: Type your message and press Enter or click the send button
+- **Voice Input**: Click the microphone icon to record and transcribe voice messages
+- **Chat History**: Use the sidebar to switch between different conversations
 
-### Voice Input Features
-- **🎤 Start Recording**: Click the microphone button to start recording
-- **⏱️ Recording Duration**: See how long you've been recording
-- **🔄 Auto-stop**: Recording automatically stops after 30 seconds
-- **🎵 Audio Processing**: WebM audio is converted to WAV for better compatibility
-- **📝 Automatic Transcription**: Speech is converted to text using Whisper.cpp
-- **🚀 Auto-send**: Transcribed text is automatically sent as a message
-- **✨ Beautiful Animations**: Visual feedback during recording and processing
+### Document Analysis
+1. **Upload PDF**: Drag and drop a PDF file or click to browse
+2. **Process Document**: Click "Process" to extract text and generate searchable chunks
+3. **Ask Questions**: Click "Ask Question" to query the document content
+4. **AI Responses**: Get context-aware answers based on document content
 
-### Chat Features
-- **Real-time Messaging**: Messages appear instantly
-- **Auto-scroll**: Automatically scrolls to latest messages
-- **Voice Input**: Full voice-to-text functionality with automatic sending
-- **Message History**: All conversations are preserved
-- **Responsive Design**: Works on all device sizes
-- **Loading States**: Skeleton loaders and spinners for better UX
+### Function Calling
+- **Weather**: Type "погода в Києві" to get current weather
+- **Email**: Type "відправити емейл на user@example.com з темою Test" to send an email
+- **Calendar**: Type "додати зустріч з назвою Team Meeting" to create a calendar event
+- **Files**: Type "показати файли" to list uploaded documents
+- **Search**: Type "знайти в файлах AI" to search across all documents
+
+### Voice Input
+- **Recording**: Click and hold the microphone button to record
+- **Auto-send**: Transcribed text is automatically sent to the chat
+- **Visual Feedback**: Watch the recording animation and processing indicators
+
+### File Management
+- **View Files**: See all uploaded documents in the chat interface
+- **Process Files**: Convert PDFs to searchable content
+- **Delete Files**: Remove files you no longer need
+- **Search Content**: Ask questions about specific documents
+- **Cross-File Search**: Search across all documents simultaneously
+- **File Statistics**: View detailed information about your documents
 
 ## 🔧 Configuration
 

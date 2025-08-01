@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useChat, useSendMessageNew, useGenerateResponse, useStatus } from '../hooks/useApi';
+import { useChat, useSendMessageNew, useGenerateResponse, useStatus, useFilesByChat, useUploadFile, useProcessPDF, useDeleteFile, useSearchInFile, useParseAndExecuteFunctions } from '../hooks/useApi';
 import { ChatPageSkeleton } from '../components/SkeletonLoader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { VoiceInput } from '../components/VoiceInput';
 import { ChatSidebar } from '../components/ChatSidebar';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { FileUploadButton } from '../components/FileUploadButton';
+import { FileList } from '../components/FileList';
+import { FunctionCallDisplay } from '../components/FunctionCallDisplay';
 import type { Message, MessageStatus, Chat } from 'shared/src/types';
 
 export const ChatPage: React.FC = () => {
@@ -15,13 +19,23 @@ export const ChatPage: React.FC = () => {
   
   const { data: chatData, isLoading, error } = useChat(chatId || null);
   const { data: statusData } = useStatus();
+  const { data: filesData, refetch: refetchFiles } = useFilesByChat(chatId || null);
   const sendMessageMutation = useSendMessageNew();
   const generateResponseMutation = useGenerateResponse();
+  const uploadFileMutation = useUploadFile();
+  const processPDFMutation = useProcessPDF();
+  const deleteFileMutation = useDeleteFile();
+  const searchInFileMutation = useSearchInFile();
+  const parseAndExecuteFunctionsMutation = useParseAndExecuteFunctions();
   
   const [inputMessage, setInputMessage] = useState('');
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [messageStatuses, setMessageStatuses] = useState<Map<string, MessageStatus>>(new Map());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [processingFileId, setProcessingFileId] = useState<string | null>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [functionCalls, setFunctionCalls] = useState<any[]>([]);
+  const [functionResults, setFunctionResults] = useState<any[]>([]);
 
   const messages = chatData?.messages || [];
   const chat = chatData?.chat;
@@ -57,6 +71,9 @@ export const ChatPage: React.FC = () => {
     const newMessages = [...localMessages, userMessage];
     setLocalMessages(newMessages);
     setInputMessage('');
+
+    // Check for function calls in the message
+    await handleFunctionCall(inputMessage.trim());
 
     // Create a temporary message ID for tracking
     const tempMessageId = `temp_${Date.now()}`;
@@ -252,6 +269,107 @@ export const ChatPage: React.FC = () => {
     setSidebarOpen(false);
   };
 
+  // File handling functions
+  const handleFileUpload = async (file: File) => {
+    console.log('handleFileUpload called with file:', file.name, 'chatId:', chatId);
+    if (!chatId) return;
+    
+    try {
+      console.log('Calling uploadFileMutation.mutateAsync...');
+      const result = await uploadFileMutation.mutateAsync({ file, chatId });
+      console.log('File upload result:', result);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    }
+  };
+
+  const handleProcessFile = async (fileId: string) => {
+    setProcessingFileId(fileId);
+    try {
+      await processPDFMutation.mutateAsync(fileId);
+    } catch (error) {
+      console.error('Error processing file:', error);
+    } finally {
+      setProcessingFileId(null);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    console.log('handleDeleteFile called with fileId:', fileId);
+    if (!window.confirm('Are you sure you want to delete this file?')) return;
+    
+    setDeletingFileId(fileId);
+    try {
+      console.log('Calling deleteFileMutation.mutateAsync...');
+      await deleteFileMutation.mutateAsync(fileId);
+      refetchFiles();
+      console.log('File deleted successfully');
+    } catch (error) {
+      console.error('Error deleting file:', error);
+    } finally {
+      setDeletingFileId(null);
+    }
+  };
+
+  const handleSearchInFile = async (fileId: string, query: string) => {
+    if (!chatId) return;
+    
+    try {
+      const result = await searchInFileMutation.mutateAsync({ fileId, query });
+      if (result.success && result.chunks.length > 0) {
+        // Create a context message with the relevant chunks
+        const contextMessage = `Based on the document, here are the relevant sections:\n\n${result.chunks.join('\n\n')}\n\nQuestion: ${query}`;
+        
+        // Send the context as a user message
+        const userMessage: Message = {
+          role: 'user',
+          content: contextMessage
+        };
+
+        const newMessages = [...localMessages, userMessage];
+        setLocalMessages(newMessages);
+
+        // Send message to backend
+        const sendResult = await sendMessageMutation.mutateAsync({
+          messages: newMessages,
+          model: 'gemma3n:latest',
+          chatId
+        });
+
+        if (sendResult.success && sendResult.messageId) {
+          const messageId = sendResult.messageId;
+          
+          // Generate AI response
+          await generateResponseMutation.mutateAsync({
+            messageId: messageId,
+            chatId: chatId,
+            model: 'gemma3n:latest'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error searching in file:', error);
+    }
+  };
+
+  const handleFunctionCall = async (text: string) => {
+    try {
+      const result = await parseAndExecuteFunctionsMutation.mutateAsync(text);
+      if (result.success) {
+        setFunctionCalls(result.functionCalls);
+        setFunctionResults(result.results);
+        
+        // Clear function calls after 10 seconds
+        setTimeout(() => {
+          setFunctionCalls([]);
+          setFunctionResults([]);
+        }, 10000);
+      }
+    } catch (error) {
+      console.error('Error executing functions:', error);
+    }
+  };
+
   const isSending = sendMessageMutation.isPending;
   const isGenerating = generateResponseMutation.isPending;
 
@@ -359,7 +477,11 @@ export const ChatPage: React.FC = () => {
                       : 'bg-white border border-gray-200 text-gray-900'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  {message.role === 'user' ? (
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                  ) : (
+                    <MarkdownRenderer content={message.content} />
+                  )}
                   
                   {/* Status indicators */}
                   {messageStatus && (
@@ -416,10 +538,47 @@ export const ChatPage: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Function Calls Display */}
+        {functionCalls.length > 0 && (
+          <div className="bg-white border-t border-gray-200 p-6">
+            <div className="max-w-4xl mx-auto">
+              <FunctionCallDisplay
+                functionCalls={functionCalls}
+                results={functionResults}
+              />
+            </div>
+          </div>
+        )}
+
+                {/* Files Section */}
+        {filesData?.files && filesData.files.length > 0 && (
+          <div className="bg-white border-t border-gray-200 p-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">📄 Uploaded Documents</h3>
+                <FileList
+                  files={filesData.files}
+                  onProcessFile={handleProcessFile}
+                  onDeleteFile={handleDeleteFile}
+                  onSearchInFile={handleSearchInFile}
+                  processingFileId={processingFileId || undefined}
+                  deletingFileId={deletingFileId || undefined}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Input */}
         <div className="bg-white border-t border-gray-200 p-6">
           <div className="max-w-4xl mx-auto">
             <div className="flex gap-3 items-end">
+              {/* File Upload Button */}
+              <FileUploadButton
+                onFileUpload={handleFileUpload}
+                disabled={isSending || isGenerating || !status?.ollamaAvailable || uploadFileMutation.isPending}
+              />
+              
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}

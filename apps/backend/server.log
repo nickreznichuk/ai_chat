@@ -1,0 +1,29 @@
+yarn run v1.22.22
+$ ts-node src/index.ts
+Whisper configuration:
+  Whisper path: whisper
+  Model path: /Users/kolya/Documents/Projects/ai_frontend/apps/backend/models/ggml-base.bin
+  Model exists: true
+  FFmpeg: ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers
+Server running on http://localhost:3001
+Connected to MongoDB
+getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
+Found files: 0
+getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
+Found files: 0
+getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
+Found files: 0
+uploadFile called, req.file: Mykola Reznichuk (1) (1).pdf req.body: [Object: null prototype] { chatId: '688c9ce9ed9eb5400294fa7c' }
+chatId from request: 688c9ce9ed9eb5400294fa7c
+File saved with ID: new ObjectId('688cef3f87e0e7b8027d8b46')
+getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
+Found files: 1
+getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
+Found files: 0
+uploadFile called, req.file: Mykola Reznichuk (1) (1).pdf req.body: [Object: null prototype] { chatId: '688c9ce9ed9eb5400294fa7c' }
+chatId from request: 688c9ce9ed9eb5400294fa7c
+File saved with ID: new ObjectId('688cf02287e0e7b8027d8b4f')
+getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
+Found files: 1
+getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
+Found files: 0
