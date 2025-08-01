@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { statusApi, chatApi, chatManagementApi } from '../services/api';
-import type { Message, CreateChatRequest, UpdateChatRequest } from 'shared/src/types';
+import { statusApi, chatApi, chatManagementApi, messageApi } from '../services/api';
+import type { 
+  Message, 
+  CreateChatRequest, 
+  UpdateChatRequest,
+  SendMessageRequest,
+  GenerateResponseRequest
+} from 'shared/src/types';
 
 // Query keys
 export const queryKeys = {
@@ -72,7 +78,7 @@ export const useDeleteChat = () => {
   });
 };
 
-// Chat message hooks
+// Legacy chat message hook (for backward compatibility)
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
   
@@ -83,6 +89,39 @@ export const useSendMessage = () => {
       chatId?: string;
       options?: any;
     }) => chatApi.sendMessage(data),
+    onSuccess: (_, { chatId }) => {
+      if (chatId) {
+        // Invalidate specific chat to refetch messages
+        queryClient.invalidateQueries({ queryKey: queryKeys.chat(chatId) });
+      }
+      // Invalidate chats list to update timestamps
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats });
+    },
+  });
+};
+
+// New message handling hooks
+export const useSendMessageNew = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: SendMessageRequest) => messageApi.sendMessage(data),
+    onSuccess: (_, { chatId }) => {
+      if (chatId) {
+        // Invalidate specific chat to refetch messages
+        queryClient.invalidateQueries({ queryKey: queryKeys.chat(chatId) });
+      }
+      // Invalidate chats list to update timestamps
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats });
+    },
+  });
+};
+
+export const useGenerateResponse = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: GenerateResponseRequest) => messageApi.generateResponse(data),
     onSuccess: (_, { chatId }) => {
       if (chatId) {
         // Invalidate specific chat to refetch messages

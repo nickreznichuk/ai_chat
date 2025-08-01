@@ -1,4 +1,16 @@
-import type { Message, Chat, CreateChatRequest, UpdateChatRequest, ChatResponse, VoiceInputRequest, VoiceInputResponse } from 'shared/src/types';
+import type { 
+  Message, 
+  Chat, 
+  CreateChatRequest, 
+  UpdateChatRequest, 
+  ChatResponse, 
+  VoiceInputRequest, 
+  VoiceInputResponse,
+  SendMessageRequest,
+  SendMessageResponse,
+  GenerateResponseRequest,
+  GenerateResponseResponse
+} from 'shared/src/types';
 import { config } from '../config/env';
 
 const API_BASE_URL = config.api.baseUrl;
@@ -28,7 +40,7 @@ export const statusApi = {
   checkStatus: () => apiRequest<{ status: string; ollamaAvailable: boolean; model: string }>('/status'),
 };
 
-// Chat API
+// Chat API (legacy for backward compatibility)
 export const chatApi = {
   sendMessage: (data: {
     messages: Message[];
@@ -36,6 +48,19 @@ export const chatApi = {
     chatId?: string;
     options?: any;
   }) => apiRequest<ChatResponse>('/chat', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+// New Message API
+export const messageApi = {
+  sendMessage: (data: SendMessageRequest) => apiRequest<SendMessageResponse>('/messages/send', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  generateResponse: (data: GenerateResponseRequest) => apiRequest<GenerateResponseResponse>('/messages/generate-response', {
     method: 'POST',
     body: JSON.stringify(data),
   }),

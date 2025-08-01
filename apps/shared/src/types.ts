@@ -46,6 +46,53 @@ export interface ChatResponse {
   done: boolean;
 }
 
+// New types for improved message handling
+export interface SendMessageRequest {
+  messages: Message[];
+  model?: string;
+  chatId?: string;
+  options?: {
+    temperature?: number;
+    top_p?: number;
+    top_k?: number;
+    num_predict?: number;
+  };
+}
+
+export interface SendMessageResponse {
+  success: boolean;
+  messageId?: string;
+  chatId?: string;
+  error?: string;
+}
+
+export interface GenerateResponseRequest {
+  messageId: string;
+  chatId: string;
+  model?: string;
+  options?: {
+    temperature?: number;
+    top_p?: number;
+    top_k?: number;
+    num_predict?: number;
+  };
+}
+
+export interface GenerateResponseResponse {
+  response: string;
+  model: string;
+  created_at: string;
+  done: boolean;
+  messageId: string;
+}
+
+// Message status types
+export interface MessageStatus {
+  messageId: string;
+  status: 'pending' | 'sending' | 'sent' | 'generating' | 'completed' | 'error';
+  error?: string;
+}
+
 // Chat management types
 export interface Chat {
   _id: string;

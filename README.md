@@ -19,6 +19,7 @@ A modern AI chat application built with React, TypeScript, and Express, featurin
 ## 🏗️ Architecture
 
 ### Backend (Express + TypeScript)
+- **Modular Route Structure**: Organized routes in separate files for better maintainability
 - **Separate Message Model**: Optimized database structure with dedicated Message collection
 - **RESTful API**: Clean API endpoints for chat management and voice processing
 - **MongoDB Integration**: Persistent storage with Mongoose ODM
@@ -48,6 +49,11 @@ ai_frontend/
 │   │   │   ├── models/             # MongoDB schemas
 │   │   │   │   ├── Chat.ts
 │   │   │   │   └── Message.ts
+│   │   │   ├── routes/             # API route definitions
+│   │   │   │   ├── chatRoutes.ts
+│   │   │   │   ├── chatManagementRoutes.ts
+│   │   │   │   ├── voiceRoutes.ts
+│   │   │   │   └── healthRoutes.ts
 │   │   │   ├── services/           # Business logic services
 │   │   │   │   ├── ollamaService.ts
 │   │   │   │   ├── chatService.ts

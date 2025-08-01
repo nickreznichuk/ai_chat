@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useChat, useSendMessage, useStatus } from '../hooks/useApi';
+import { useChat, useSendMessageNew, useGenerateResponse, useStatus } from '../hooks/useApi';
 import { ChatPageSkeleton } from '../components/SkeletonLoader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { VoiceInput } from '../components/VoiceInput';
-import type { Message } from 'shared/src/types';
+import { ChatSidebar } from '../components/ChatSidebar';
+import type { Message, MessageStatus, Chat } from 'shared/src/types';
 
 export const ChatPage: React.FC = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -14,10 +15,13 @@ export const ChatPage: React.FC = () => {
   
   const { data: chatData, isLoading, error } = useChat(chatId || null);
   const { data: statusData } = useStatus();
-  const sendMessageMutation = useSendMessage();
+  const sendMessageMutation = useSendMessageNew();
+  const generateResponseMutation = useGenerateResponse();
   
   const [inputMessage, setInputMessage] = useState('');
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
+  const [messageStatuses, setMessageStatuses] = useState<Map<string, MessageStatus>>(new Map());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const messages = chatData?.messages || [];
   const chat = chatData?.chat;
@@ -54,19 +58,84 @@ export const ChatPage: React.FC = () => {
     setLocalMessages(newMessages);
     setInputMessage('');
 
+    // Create a temporary message ID for tracking
+    const tempMessageId = `temp_${Date.now()}`;
+    setMessageStatuses(prev => new Map(prev).set(tempMessageId, {
+      messageId: tempMessageId,
+      status: 'sending'
+    }));
+
     try {
-      await sendMessageMutation.mutateAsync({
+      // Step 1: Send message to backend
+      const sendResult = await sendMessageMutation.mutateAsync({
         messages: newMessages,
         model: 'gemma3n:latest',
         chatId
       });
+
+      if (sendResult.success && sendResult.messageId) {
+        const messageId = sendResult.messageId; // Extract to avoid TypeScript issues
+        
+        // Update status to sent
+        setMessageStatuses(prev => new Map(prev).set(messageId, {
+          messageId: messageId,
+          status: 'sent'
+        }));
+
+        // Step 2: Generate AI response
+        setMessageStatuses(prev => new Map(prev).set(messageId, {
+          messageId: messageId,
+          status: 'generating'
+        }));
+
+        const responseResult = await generateResponseMutation.mutateAsync({
+          messageId: messageId,
+          chatId: chatId,
+          model: 'gemma3n:latest'
+        });
+
+        // Update status to completed
+        setMessageStatuses(prev => new Map(prev).set(messageId, {
+          messageId: messageId,
+          status: 'completed'
+        }));
+
+        // Clean up status after a delay
+        setTimeout(() => {
+          setMessageStatuses(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(messageId);
+            return newMap;
+          });
+        }, 2000);
+
+      } else {
+        throw new Error(sendResult.error || 'Failed to send message');
+      }
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Update status to error
+      setMessageStatuses(prev => new Map(prev).set(tempMessageId, {
+        messageId: tempMessageId,
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }));
+
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, an error occurred while processing your request.'
       };
       setLocalMessages(prev => [...prev, errorMessage]);
+
+      // Clean up error status after a delay
+      setTimeout(() => {
+        setMessageStatuses(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(tempMessageId);
+          return newMap;
+        });
+      }, 5000);
     }
   };
 
@@ -93,162 +162,286 @@ export const ChatPage: React.FC = () => {
     setLocalMessages(newMessages);
     setInputMessage(''); // Clear input since we're auto-sending
 
+    // Create a temporary message ID for tracking
+    const tempMessageId = `temp_${Date.now()}`;
+    setMessageStatuses(prev => new Map(prev).set(tempMessageId, {
+      messageId: tempMessageId,
+      status: 'sending'
+    }));
+
     try {
-      await sendMessageMutation.mutateAsync({
+      // Step 1: Send message to backend
+      const sendResult = await sendMessageMutation.mutateAsync({
         messages: newMessages,
         model: 'gemma3n:latest',
         chatId
       });
+
+      if (sendResult.success && sendResult.messageId) {
+        const messageId = sendResult.messageId; // Extract to avoid TypeScript issues
+        
+        // Update status to sent
+        setMessageStatuses(prev => new Map(prev).set(messageId, {
+          messageId: messageId,
+          status: 'sent'
+        }));
+
+        // Step 2: Generate AI response
+        setMessageStatuses(prev => new Map(prev).set(messageId, {
+          messageId: messageId,
+          status: 'generating'
+        }));
+
+        const responseResult = await generateResponseMutation.mutateAsync({
+          messageId: messageId,
+          chatId: chatId,
+          model: 'gemma3n:latest'
+        });
+
+        // Update status to completed
+        setMessageStatuses(prev => new Map(prev).set(messageId, {
+          messageId: messageId,
+          status: 'completed'
+        }));
+
+        // Clean up status after a delay
+        setTimeout(() => {
+          setMessageStatuses(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(messageId);
+            return newMap;
+          });
+        }, 2000);
+
+      } else {
+        throw new Error(sendResult.error || 'Failed to send message');
+      }
     } catch (error) {
       console.error('Error sending voice message:', error);
+      
+      // Update status to error
+      setMessageStatuses(prev => new Map(prev).set(tempMessageId, {
+        messageId: tempMessageId,
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }));
+
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, an error occurred while processing your voice message.'
       };
       setLocalMessages(prev => [...prev, errorMessage]);
+
+      // Clean up error status after a delay
+      setTimeout(() => {
+        setMessageStatuses(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(tempMessageId);
+          return newMap;
+        });
+      }, 5000);
     }
   };
+
+  const getMessageStatus = (messageId: string): MessageStatus | undefined => {
+    return messageStatuses.get(messageId);
+  };
+
+  const handleChatSelect = (selectedChat: Chat) => {
+    navigate(`/chat/${selectedChat._id}`);
+    setSidebarOpen(false);
+  };
+
+  const isSending = sendMessageMutation.isPending;
+  const isGenerating = generateResponseMutation.isPending;
 
   if (isLoading) {
     return <ChatPageSkeleton />;
   }
 
-  if (error || !chat) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
-        <div className="bg-white/95 backdrop-blur-lg rounded-xl p-8 shadow-2xl">
-          <div className="text-center">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Chat Not Found</h2>
-            <p className="text-gray-600 mb-4">The chat you're looking for doesn't exist</p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Back to Chats
-            </button>
-          </div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Chat</h2>
+          <p className="text-gray-600 mb-4">Failed to load the chat. Please try again.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Back to Chats
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!chat) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Chat Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested chat could not be found.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Back to Chats
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen max-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[20px] box-border">
-      <div className="h-full max-h-[calc(100vh-40px)] max-w-4xl mx-auto flex flex-col bg-white/95 backdrop-blur-lg shadow-2xl rounded-xl">
-        {/* Header */}
-        <header className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex justify-between items-center border-b border-white/10 rounded-t-xl">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </button>
-            <div>
-              <h1 className="text-xl font-semibold flex items-center gap-2">
-                {chat.title}
-                {sendMessageMutation.isPending && (
-                  <LoadingSpinner size="sm" color="white" />
-                )}
-              </h1>
-              <p className="text-sm text-white/80">Gemma3n AI Assistant</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {status ? (
-              <span className={`px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm ${
-                status.ollamaAvailable 
-                  ? 'bg-green-500/20 text-green-100' 
-                  : 'bg-red-500/20 text-red-100'
-              }`}>
-                {status.ollamaAvailable ? '🟢' : '🔴'} {status.model}
-              </span>
-            ) : (
-              <span className="px-3 py-1 rounded-full text-sm font-medium bg-white/20 backdrop-blur-sm flex items-center gap-2">
-                <LoadingSpinner size="sm" color="white" />
-                Checking...
-              </span>
-            )}
-          </div>
-        </header>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <ChatSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentChatId={chatId}
+        onChatSelect={handleChatSelect}
+      />
 
-        {/* Chat Container */}
-        <div className="flex-1 flex flex-col overflow-hidden rounded-b-xl h-full">
-          {/* Messages */}
-          <div 
-            ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-6 space-y-4 overlay-scrollbar"
-          >
-            {localMessages.length === 0 && (
-              <div className="text-center py-12 px-6 bg-gray-50 rounded-xl">
-                <p className="text-lg text-gray-600 leading-relaxed">
-                  👋 Hello! I'm Gemma3n, a local AI model. Ask me anything!
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 text-gray-600 hover:text-gray-900"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {chat.title}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Model: {chat.modelName}
                 </p>
               </div>
-            )}
-            
-            {localMessages.map((message, index) => (
-              <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                  message.role === 'user'
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-br-md'
-                    : 'bg-gray-100 text-gray-800 rounded-bl-md'
-                }`}>
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {status && (
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${status.ollamaAvailable ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <span className="text-sm text-gray-600">
+                    {status.ollamaAvailable ? 'AI Ready' : 'AI Unavailable'}
+                  </span>
                 </div>
-              </div>
-            ))}
-            
-            {sendMessageMutation.isPending && (
-              <div className="flex justify-start">
-                <div className="max-w-[80%] px-4 py-3 rounded-2xl bg-gray-100 text-gray-800 rounded-bl-md">
-                  <div className="flex gap-1 items-center">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-typing"></span>
-                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-typing" style={{ animationDelay: '-0.16s' }}></span>
-                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-typing" style={{ animationDelay: '-0.32s' }}></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
+              )}
+            </div>
           </div>
+        </div>
 
-          {/* Input Container */}
-          <div className="p-6 border-t border-gray-200 bg-white">
+        {/* Messages */}
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-6 space-y-4 overlay-scrollbar"
+        >
+          {localMessages.map((message, index) => {
+            const messageStatus = getMessageStatus(message.role === 'user' ? `user_${index}` : `assistant_${index}`);
+            
+            return (
+              <div
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-3xl px-4 py-2 rounded-lg ${
+                    message.role === 'user'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white border border-gray-200 text-gray-900'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  
+                  {/* Status indicators */}
+                  {messageStatus && (
+                    <div className="mt-2 flex items-center space-x-2">
+                      {messageStatus.status === 'sending' && (
+                        <div className="flex items-center space-x-1 text-xs">
+                          <LoadingSpinner size="sm" color={message.role === 'user' ? 'white' : 'indigo'} />
+                          <span>Sending...</span>
+                        </div>
+                      )}
+                      {messageStatus.status === 'sent' && (
+                        <div className="flex items-center space-x-1 text-xs">
+                          <span>✓ Sent</span>
+                        </div>
+                      )}
+                      {messageStatus.status === 'generating' && (
+                        <div className="flex items-center space-x-1 text-xs">
+                          <LoadingSpinner size="sm" color={message.role === 'user' ? 'white' : 'indigo'} />
+                          <span>AI is thinking...</span>
+                        </div>
+                      )}
+                      {messageStatus.status === 'error' && (
+                        <div className="flex items-center space-x-1 text-xs text-red-500">
+                          <span>✗ Error: {messageStatus.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* Overall status indicators */}
+          {(isSending || isGenerating) && (
+            <div className="flex justify-center">
+              <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 flex items-center space-x-2">
+                {isSending && (
+                  <>
+                    <LoadingSpinner size="sm" color="indigo" />
+                    <span className="text-sm text-gray-600">Sending message...</span>
+                  </>
+                )}
+                {isGenerating && (
+                  <>
+                    <LoadingSpinner size="sm" color="indigo" />
+                    <span className="text-sm text-gray-600">Generating response...</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="bg-white border-t border-gray-200 p-6">
+          <div className="max-w-4xl mx-auto">
             <div className="flex gap-3 items-end">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={sendMessageMutation.isPending ? "Sending message..." : "Type your message..."}
-                disabled={sendMessageMutation.isPending || !status?.ollamaAvailable}
-                rows={3}
-                className={`flex-1 px-4 py-3 border-2 rounded-xl text-sm font-medium resize-none outline-none transition-colors ${
-                  sendMessageMutation.isPending 
-                    ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'border-gray-200 bg-gray-50 focus:border-indigo-500 focus:bg-white'
-                }`}
+                placeholder="Type your message..."
+                disabled={isSending || isGenerating || !status?.ollamaAvailable}
+                className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                rows={1}
+                style={{ minHeight: '44px', maxHeight: '120px' }}
               />
               <div className="flex gap-2">
                 <VoiceInput
                   onTranscription={handleVoiceTranscription}
                   onAutoSend={handleVoiceAutoSend}
-                  disabled={sendMessageMutation.isPending || !status?.ollamaAvailable}
+                  disabled={isSending || isGenerating || !status?.ollamaAvailable}
                 />
-                <button 
+                <button
                   onClick={handleSendMessage}
-                  disabled={!inputMessage.trim() || sendMessageMutation.isPending || !status?.ollamaAvailable}
-                  className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none min-w-[48px] h-[48px] flex items-center justify-center text-lg"
+                  disabled={!inputMessage.trim() || isSending || isGenerating || !status?.ollamaAvailable}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  {sendMessageMutation.isPending ? (
+                  {isSending ? (
                     <LoadingSpinner size="md" color="white" />
                   ) : (
                     '📤'
