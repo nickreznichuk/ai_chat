@@ -1,33 +1,38 @@
 # AI Chat Frontend - Ollama Integration with Gemma3n
 
-A modern AI chat application built with React, TypeScript, and Express, featuring integration with Ollama's Gemma3n model. The application includes chat management, real-time messaging, and a beautiful responsive UI.
+A modern AI chat application built with React, TypeScript, and Express, featuring integration with Ollama's Gemma3n model. The application includes chat management, real-time messaging, voice input with automatic transcription, and a beautiful responsive UI.
 
 ## 🚀 Features
 
 - **🤖 AI Integration**: Seamless integration with Ollama's Gemma3n model
+- **🎤 Voice Input**: Speech-to-text functionality using Whisper.cpp with automatic message sending
 - **💬 Chat Management**: Create, view, and manage multiple chat conversations
-- **💾 Message Persistence**: All messages are stored in MongoDB
-- **🎨 Modern UI**: Beautiful responsive design with Tailwind CSS
+- **💾 Message Persistence**: All messages are stored in MongoDB with optimized database structure
+- **🎨 Modern UI**: Beautiful responsive design with Tailwind CSS and custom animations
 - **⚡ Real-time Updates**: Instant message updates with React Query
 - **📱 Responsive Design**: Works perfectly on desktop and mobile devices
 - **🔄 Auto-scroll**: Automatic scrolling to latest messages
 - **🎯 Type Safety**: Full TypeScript support throughout the application
+- **🎵 Voice Animations**: Beautiful animations during recording and transcription
+- **🚀 Auto-send**: Voice messages are automatically sent after transcription
 
 ## 🏗️ Architecture
 
 ### Backend (Express + TypeScript)
 - **Separate Message Model**: Optimized database structure with dedicated Message collection
-- **RESTful API**: Clean API endpoints for chat management
+- **RESTful API**: Clean API endpoints for chat management and voice processing
 - **MongoDB Integration**: Persistent storage with Mongoose ODM
 - **Ollama Service**: Integration with local Ollama API
+- **Voice Processing**: FFmpeg integration for audio conversion and Whisper.cpp for transcription
 - **Error Handling**: Comprehensive error handling and validation
 
 ### Frontend (React + TypeScript)
 - **React Query**: Efficient data fetching and caching
 - **React Router**: Client-side routing for better UX
-- **Tailwind CSS**: Modern, responsive styling
+- **Tailwind CSS**: Modern, responsive styling with custom animations
 - **Custom Hooks**: Reusable API hooks for data management
 - **Component Architecture**: Modular, maintainable components
+- **Voice Input**: Web Audio API integration with MediaRecorder
 
 ## 📁 Project Structure
 
@@ -38,7 +43,8 @@ ai_frontend/
 │   │   ├── src/
 │   │   │   ├── controllers/        # API route controllers
 │   │   │   │   ├── chatController.ts
-│   │   │   │   └── chatManagementController.ts
+│   │   │   │   ├── chatManagementController.ts
+│   │   │   │   └── voiceController.ts
 │   │   │   ├── models/             # MongoDB schemas
 │   │   │   │   ├── Chat.ts
 │   │   │   │   └── Message.ts
@@ -46,13 +52,22 @@ ai_frontend/
 │   │   │   │   ├── ollamaService.ts
 │   │   │   │   ├── chatService.ts
 │   │   │   │   └── messageService.ts
+│   │   │   ├── config/             # Configuration management
+│   │   │   │   └── env.ts
+│   │   │   ├── temp/               # Temporary files for voice processing
+│   │   │   ├── models/             # Whisper model files
+│   │   │   │   └── ggml-base.bin
 │   │   │   └── index.ts            # Server entry point
 │   │   ├── package.json
+│   │   ├── .env.example
 │   │   └── tsconfig.json
 │   ├── frontend/                   # React frontend application
 │   │   ├── src/
 │   │   │   ├── components/         # Reusable UI components
-│   │   │   │   └── ChatSidebar.tsx
+│   │   │   │   ├── ChatSidebar.tsx
+│   │   │   │   ├── VoiceInput.tsx
+│   │   │   │   ├── LoadingSpinner.tsx
+│   │   │   │   └── SkeletonLoader.tsx
 │   │   │   ├── hooks/              # Custom React hooks
 │   │   │   │   └── useApi.ts
 │   │   │   ├── pages/              # Page components
@@ -60,10 +75,13 @@ ai_frontend/
 │   │   │   │   └── ChatPage.tsx
 │   │   │   ├── services/           # API service layer
 │   │   │   │   └── api.ts
+│   │   │   ├── config/             # Configuration management
+│   │   │   │   └── env.ts
 │   │   │   ├── App.tsx             # Main application component
 │   │   │   ├── index.css           # Global styles with Tailwind
 │   │   │   └── main.tsx            # Application entry point
 │   │   ├── package.json
+│   │   ├── .env.example
 │   │   ├── tailwind.config.js      # Tailwind CSS configuration
 │   │   ├── postcss.config.js       # PostCSS configuration
 │   │   └── tsconfig.json
@@ -72,6 +90,7 @@ ai_frontend/
 │       │   └── types.ts            # Common type definitions
 │       ├── package.json
 │       └── tsconfig.json
+├── setup-whisper.sh                # Whisper.cpp installation script
 ├── package.json                    # Root package.json with workspaces
 ├── yarn.lock                       # Yarn lock file
 └── README.md                       # This file
@@ -81,14 +100,27 @@ ai_frontend/
 
 Before running this project, make sure you have the following installed:
 
-- **Node.js** (v20.19.0 or higher)
+- **Node.js** (v22.12.0 or higher)
 - **Yarn** (v1.22.0 or higher)
 - **MongoDB** (v6.0 or higher)
 - **Ollama** (latest version)
+- **FFmpeg** (for audio processing)
+- **Git** and **Make** (for Whisper.cpp installation)
+- **CMake** (for building Whisper.cpp)
 
 ## 📦 Installation
 
-### 1. Install Ollama and Gemma3n Model
+### 1. Install System Dependencies
+
+```bash
+# Install FFmpeg (macOS)
+brew install ffmpeg
+
+# Install CMake (required for Whisper.cpp)
+brew install cmake
+```
+
+### 2. Install Ollama and Gemma3n Model
 
 ```bash
 # Install Ollama (macOS)
@@ -101,7 +133,20 @@ ollama pull gemma3n
 ollama serve
 ```
 
-### 2. Install MongoDB
+### 3. Install Whisper.cpp for Voice Input
+
+```bash
+# Run the setup script (requires sudo for global installation)
+./setup-whisper.sh
+```
+
+**Note**: The setup script will:
+- Clone and build whisper.cpp
+- Download the ggml-base.bin model (~150MB)
+- Install the whisper executable globally (`/usr/local/bin/whisper`)
+- Copy the model to `apps/backend/models/`
+
+### 4. Install MongoDB
 
 ```bash
 # macOS with Homebrew
@@ -112,7 +157,7 @@ brew install mongodb-community
 brew services start mongodb-community
 ```
 
-### 3. Clone and Setup Project
+### 5. Clone and Setup Project
 
 ```bash
 # Clone the repository
@@ -123,15 +168,52 @@ cd ai_frontend
 yarn install
 ```
 
-### 4. Environment Configuration
+### 6. Environment Configuration
 
+Create environment files for both frontend and backend:
+
+**Backend (.env):**
 ```bash
-# Copy environment example files
-cp apps/backend/.env.example apps/backend/.env
-cp apps/frontend/.env.example apps/frontend/.env
+# Server Configuration
+PORT=3001
+NODE_ENV=development
 
-# Customize the .env files according to your environment
-# (Optional: modify ports, database URLs, etc.)
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017/ai_chat
+MONGODB_DATABASE=ai_chat
+
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_DEFAULT_MODEL=gemma3n:latest
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:5173
+
+# API Configuration
+API_PREFIX=/api
+
+# Whisper Configuration
+WHISPER_PATH=whisper
+WHISPER_MODEL_PATH=./models/ggml-base.bin
+
+# Logging Configuration
+LOG_LEVEL=info
+```
+
+**Frontend (.env):**
+```bash
+# API Configuration
+VITE_API_BASE_URL=http://localhost:3001/api
+
+# App Configuration
+VITE_APP_NAME=AI Chat
+VITE_APP_VERSION=1.0.0
+
+# Development Configuration
+VITE_DEV_SERVER_PORT=5173
+VITE_DEV_SERVER_HOST=localhost
+VITE_ENABLE_DEBUG_MODE=true
+VITE_ENABLE_ANALYTICS=false
 ```
 
 ## 🚀 Running the Application
@@ -171,6 +253,9 @@ curl http://localhost:3001/health
 # Check Ollama status
 curl http://localhost:11434/api/tags
 
+# Check voice service status
+curl http://localhost:3001/api/voice/status
+
 # Check MongoDB connection
 # (MongoDB should be running on default port 27017)
 ```
@@ -187,6 +272,10 @@ curl http://localhost:11434/api/tags
 ### Chat Messaging
 - `POST /api/chat` - Send message to AI model
 - `GET /api/status` - Check Ollama service status
+
+### Voice Input
+- `POST /api/voice/transcribe` - Transcribe audio to text
+- `GET /api/voice/status` - Check Whisper service status
 
 ### Health Check
 - `GET /health` - Server health status
@@ -205,11 +294,22 @@ curl http://localhost:11434/api/tags
 - **Delete Chats**: Hover over a chat and click the delete icon
 - **Auto-save**: Messages are automatically saved to the database
 
+### Voice Input Features
+- **🎤 Start Recording**: Click the microphone button to start recording
+- **⏱️ Recording Duration**: See how long you've been recording
+- **🔄 Auto-stop**: Recording automatically stops after 30 seconds
+- **🎵 Audio Processing**: WebM audio is converted to WAV for better compatibility
+- **📝 Automatic Transcription**: Speech is converted to text using Whisper.cpp
+- **🚀 Auto-send**: Transcribed text is automatically sent as a message
+- **✨ Beautiful Animations**: Visual feedback during recording and processing
+
 ### Chat Features
 - **Real-time Messaging**: Messages appear instantly
 - **Auto-scroll**: Automatically scrolls to latest messages
+- **Voice Input**: Full voice-to-text functionality with automatic sending
 - **Message History**: All conversations are preserved
 - **Responsive Design**: Works on all device sizes
+- **Loading States**: Skeleton loaders and spinners for better UX
 
 ## 🔧 Configuration
 
@@ -238,6 +338,10 @@ CORS_ORIGIN=http://localhost:5173
 # API Configuration
 API_PREFIX=/api
 
+# Whisper Configuration
+WHISPER_PATH=whisper
+WHISPER_MODEL_PATH=./models/ggml-base.bin
+
 # Logging Configuration
 LOG_LEVEL=info
 ```
@@ -247,17 +351,17 @@ LOG_LEVEL=info
 Create a `.env` file in the `apps/frontend` directory:
 
 ```env
-# Frontend Configuration
+# API Configuration
 VITE_API_BASE_URL=http://localhost:3001/api
-VITE_APP_NAME=AI Chat Frontend
+
+# App Configuration
+VITE_APP_NAME=AI Chat
 VITE_APP_VERSION=1.0.0
 
 # Development Configuration
 VITE_DEV_SERVER_PORT=5173
 VITE_DEV_SERVER_HOST=localhost
-
-# Feature Flags
-VITE_ENABLE_DEBUG_MODE=false
+VITE_ENABLE_DEBUG_MODE=true
 VITE_ENABLE_ANALYTICS=false
 ```
 
@@ -270,9 +374,10 @@ VITE_ENABLE_ANALYTICS=false
 ### Tailwind CSS
 
 The frontend uses Tailwind CSS with custom configurations:
-- Custom animations for typing indicators
+- Custom animations for voice input and typing indicators
 - Responsive design utilities
 - Custom scrollbar styling
+- Voice input animations (pulse, bounce effects)
 
 ## 🧪 Testing
 
@@ -288,11 +393,21 @@ curl -X POST http://localhost:3001/api/chats \
 curl -X POST http://localhost:3001/api/chat \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Hello!"}],"model":"gemma3n:latest","chatId":"YOUR_CHAT_ID"}'
+
+# Test voice service status
+curl http://localhost:3001/api/voice/status
 ```
 
 ### Frontend Testing
 
 Open the browser and navigate to `http://localhost:5173` to test the full application.
+
+### Voice Input Testing
+
+1. **Microphone Access**: Allow microphone access when prompted
+2. **Recording**: Click the microphone button and speak
+3. **Transcription**: Watch the animation during processing
+4. **Auto-send**: Verify the message is automatically sent
 
 ## 🐛 Troubleshooting
 
@@ -316,7 +431,19 @@ Open the browser and navigate to `http://localhost:5173` to test the full applic
    brew services restart mongodb-community
    ```
 
-3. **Port conflicts**
+3. **Voice input not working**
+   ```bash
+   # Check if whisper is installed
+   which whisper
+   
+   # Check if FFmpeg is installed
+   which ffmpeg
+   
+   # Check voice service status
+   curl http://localhost:3001/api/voice/status
+   ```
+
+4. **Port conflicts**
    ```bash
    # Check what's using port 3001
    lsof -i :3001
@@ -325,7 +452,7 @@ Open the browser and navigate to `http://localhost:5173` to test the full applic
    lsof -i :5173
    ```
 
-4. **Node.js version issues**
+5. **Node.js version issues**
    ```bash
    # Check Node.js version
    node --version
@@ -333,6 +460,32 @@ Open the browser and navigate to `http://localhost:5173` to test the full applic
    # Use correct Node.js version
    nvm use default
    ```
+
+6. **Whisper.cpp build issues**
+   ```bash
+   # Reinstall whisper.cpp
+   cd whisper.cpp
+   make clean
+   make
+   sudo cp build/bin/whisper-cli /usr/local/bin/whisper
+   ```
+
+### Voice Input Troubleshooting
+
+1. **Microphone not accessible**
+   - Check browser permissions
+   - Ensure HTTPS in production (required for microphone access)
+   - Try refreshing the page
+
+2. **Transcription fails**
+   - Check if whisper executable is in PATH
+   - Verify model file exists in `apps/backend/models/`
+   - Check backend logs for FFmpeg errors
+
+3. **Audio format issues**
+   - Backend automatically converts WebM to WAV
+   - Ensure FFmpeg is properly installed
+   - Check temporary file permissions
 
 ## 🔮 Future Enhancements
 
@@ -346,6 +499,9 @@ Open the browser and navigate to `http://localhost:5173` to test the full applic
 - [ ] File upload support
 - [ ] Dark mode theme
 - [ ] Chat categories and tags
+- [ ] Voice output (text-to-speech)
+- [ ] Multiple language support for voice input
+- [ ] Voice command recognition
 
 ## 🤝 Contributing
 
@@ -363,5 +519,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Ollama](https://ollama.ai/) for providing the local AI model infrastructure
 - [Gemma3n](https://huggingface.co/google/gemma-3n-6b) model by Google
+- [Whisper.cpp](https://github.com/ggerganov/whisper.cpp) for speech-to-text functionality
+- [FFmpeg](https://ffmpeg.org/) for audio processing
 - [React Query](https://tanstack.com/query) for efficient data fetching
 - [Tailwind CSS](https://tailwindcss.com/) for the beautiful UI components 

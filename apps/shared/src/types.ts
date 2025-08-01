@@ -72,3 +72,23 @@ export interface ChatDetailResponse {
   chat: Chat;
   messages: Message[];
 }
+
+// Voice input types
+export interface VoiceInputRequest {
+  audioData: string; // Base64 encoded audio data
+  format?: string; // Audio format (wav, mp3, etc.)
+  language?: string; // Language code for transcription
+}
+
+export interface VoiceInputResponse {
+  text: string;
+  language?: string;
+  confidence?: number;
+  duration?: number;
+}
+
+export interface VoiceInputStatus {
+  isRecording: boolean;
+  isProcessing: boolean;
+  error?: string;
+}

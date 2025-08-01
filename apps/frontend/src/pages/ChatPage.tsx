@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useChat, useSendMessage, useStatus } from '../hooks/useApi';
 import { ChatPageSkeleton } from '../components/SkeletonLoader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { VoiceInput } from '../components/VoiceInput';
 import type { Message } from 'shared/src/types';
 
 export const ChatPage: React.FC = () => {
@@ -73,6 +74,38 @@ export const ChatPage: React.FC = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleVoiceTranscription = (text: string) => {
+    setInputMessage(text);
+  };
+
+  const handleVoiceAutoSend = async (text: string) => {
+    if (!text.trim() || sendMessageMutation.isPending || !chatId) return;
+
+    const userMessage: Message = {
+      role: 'user',
+      content: text.trim()
+    };
+
+    const newMessages = [...localMessages, userMessage];
+    setLocalMessages(newMessages);
+    setInputMessage(''); // Clear input since we're auto-sending
+
+    try {
+      await sendMessageMutation.mutateAsync({
+        messages: newMessages,
+        model: 'gemma3n:latest',
+        chatId
+      });
+    } catch (error) {
+      console.error('Error sending voice message:', error);
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: 'Sorry, an error occurred while processing your voice message.'
+      };
+      setLocalMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -204,17 +237,24 @@ export const ChatPage: React.FC = () => {
                     : 'border-gray-200 bg-gray-50 focus:border-indigo-500 focus:bg-white'
                 }`}
               />
-              <button 
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || sendMessageMutation.isPending || !status?.ollamaAvailable}
-                className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none min-w-[48px] h-[48px] flex items-center justify-center text-lg"
-              >
-                {sendMessageMutation.isPending ? (
-                  <LoadingSpinner size="md" color="white" />
-                ) : (
-                  '📤'
-                )}
-              </button>
+              <div className="flex gap-2">
+                <VoiceInput
+                  onTranscription={handleVoiceTranscription}
+                  onAutoSend={handleVoiceAutoSend}
+                  disabled={sendMessageMutation.isPending || !status?.ollamaAvailable}
+                />
+                <button 
+                  onClick={handleSendMessage}
+                  disabled={!inputMessage.trim() || sendMessageMutation.isPending || !status?.ollamaAvailable}
+                  className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none min-w-[48px] h-[48px] flex items-center justify-center text-lg"
+                >
+                  {sendMessageMutation.isPending ? (
+                    <LoadingSpinner size="md" color="white" />
+                  ) : (
+                    '📤'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

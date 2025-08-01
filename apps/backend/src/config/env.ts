@@ -18,6 +18,12 @@ export const config = {
     defaultModel: process.env.OLLAMA_DEFAULT_MODEL || 'gemma3n:latest',
   },
   
+  // Whisper Configuration
+  whisper: {
+    path: process.env.WHISPER_PATH || 'whisper',
+    modelPath: process.env.WHISPER_MODEL_PATH || './models/ggml-base.bin',
+  },
+  
   // CORS Configuration
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',

@@ -1,4 +1,4 @@
-import type { Message, Chat, CreateChatRequest, UpdateChatRequest, ChatResponse } from 'shared/src/types';
+import type { Message, Chat, CreateChatRequest, UpdateChatRequest, ChatResponse, VoiceInputRequest, VoiceInputResponse } from 'shared/src/types';
 import { config } from '../config/env';
 
 const API_BASE_URL = config.api.baseUrl;
@@ -60,4 +60,13 @@ export const chatManagementApi = {
   deleteChat: (id: string) => apiRequest<{ message: string }>(`/chats/${id}`, {
     method: 'DELETE',
   }),
+};
+
+// Voice API
+export const voiceApi = {
+  transcribe: (data: VoiceInputRequest) => apiRequest<VoiceInputResponse>('/voice/transcribe', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getStatus: () => apiRequest<{ whisperAvailable: boolean; modelPath: string; whisperPath: string }>('/voice/status'),
 }; 
