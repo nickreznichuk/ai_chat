@@ -1,44 +1,49 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { FileUploader } from './FileUploader';
 import { LoadingSpinner } from './LoadingSpinner';
 
-interface FileUploadButtonProps {
-  onFileUpload: (file: File) => void;
+interface RagQueryButtonProps {
+  onQuerySubmit: (query: string) => void;
   disabled?: boolean;
   className?: string;
 }
 
-export const FileUploadButton: React.FC<FileUploadButtonProps> = ({
-  onFileUpload,
+export const RagQueryButton: React.FC<RagQueryButtonProps> = ({
+  onQuerySubmit,
   disabled = false,
   className = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [query, setQuery] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleFileUpload = useCallback(async (file: File) => {
-    setIsUploading(true);
+  const handleSubmit = useCallback(async () => {
+    if (!query.trim() || isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
-      await onFileUpload(file);
-      setIsOpen(false); // Close after successful upload
-      setShowSuccess(true);
-      // Hide success indicator after 2 seconds
-      setTimeout(() => setShowSuccess(false), 2000);
+      await onQuerySubmit(query.trim());
+      setQuery('');
+      setIsOpen(false);
     } catch (error) {
-      console.error('Error uploading file:', error);
-      // Keep panel open on error so user can try again
+      console.error('Error submitting RAG query:', error);
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
-  }, [onFileUpload]);
+  }, [query, onQuerySubmit, isSubmitting]);
 
-  const toggleUpload = useCallback(() => {
+  const togglePanel = useCallback(() => {
     if (!disabled) {
       setIsOpen(!isOpen);
     }
   }, [isOpen, disabled]);
+
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }, [handleSubmit]);
 
   // Close when clicking outside
   React.useEffect(() => {
@@ -59,34 +64,30 @@ export const FileUploadButton: React.FC<FileUploadButtonProps> = ({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      {/* Upload Button */}
+      {/* RAG Query Button */}
       <button
-        onClick={toggleUpload}
+        onClick={togglePanel}
         disabled={disabled}
         className={`
           p-2 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-105
           ${isOpen 
-            ? 'bg-indigo-600 text-white shadow-lg scale-105' 
+            ? 'bg-green-600 text-white shadow-lg scale-105' 
             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
           }
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
-        title="Upload PDF file"
+        title="Ask questions about uploaded documents"
       >
-        {isUploading ? (
+        {isSubmitting ? (
           <LoadingSpinner size="sm" color="white" />
-        ) : showSuccess ? (
-          <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
         ) : (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         )}
       </button>
 
-      {/* Collapsible Upload Panel */}
+      {/* Collapsible Query Panel */}
       <div
         className={`
           absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg
@@ -96,16 +97,16 @@ export const FileUploadButton: React.FC<FileUploadButtonProps> = ({
             : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
           }
         `}
-        style={{ minWidth: '280px' }}
+        style={{ minWidth: '320px' }}
       >
         {/* Arrow pointing down */}
         <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-200"></div>
         <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white" style={{ marginTop: '-1px' }}></div>
 
-        {/* Upload Content */}
+        {/* Query Content */}
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-900">📄 Upload PDF</h3>
+            <h3 className="text-sm font-semibold text-gray-900">🔍 Document Query</h3>
             <button
               onClick={() => setIsOpen(false)}
               className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -117,22 +118,38 @@ export const FileUploadButton: React.FC<FileUploadButtonProps> = ({
           </div>
 
           <div className="text-xs text-gray-600 mb-3">
-            Upload a PDF document or image for AI analysis and processing.
+            Ask questions about your uploaded PDF documents using AI-powered search.
           </div>
 
-          <FileUploader
-            onFileUpload={handleFileUpload}
-            disabled={isUploading}
-            className="w-full"
-            acceptTypes={['application/pdf', 'image/*']}
-          />
+          <div className="space-y-3">
+            <textarea
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="What would you like to know about your documents?"
+              disabled={isSubmitting}
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+              rows={3}
+            />
 
-          {isUploading && (
-            <div className="mt-3 flex items-center space-x-2 text-sm text-gray-600">
-              <LoadingSpinner size="sm" color="gray" />
-              <span>Uploading...</span>
-            </div>
-          )}
+            <button
+              onClick={handleSubmit}
+              disabled={!query.trim() || isSubmitting}
+              className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <LoadingSpinner size="sm" color="white" />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <>
+                  <span>🔍</span>
+                  <span>Search Documents</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

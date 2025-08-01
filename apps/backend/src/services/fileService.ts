@@ -16,6 +16,21 @@ export class FileService {
     return await fileDoc.save();
   }
 
+  async processFile(fileId: string): Promise<{ chunks: string[], embeddings: number[][] }> {
+    const file = await File.findById(fileId);
+    if (!file) {
+      throw new Error('File not found');
+    }
+
+    if (file.mimeType === 'application/pdf') {
+      return this.processPDF(fileId);
+    } else if (file.mimeType.startsWith('image/')) {
+      return this.processImage(fileId);
+    } else {
+      throw new Error('Unsupported file type');
+    }
+  }
+
   async processPDF(fileId: string): Promise<{ chunks: string[], embeddings: number[][] }> {
     const file = await File.findById(fileId);
     if (!file) {
@@ -40,6 +55,39 @@ export class FileService {
     const chunks = this.splitTextIntoChunks(mockText, 1000);
     
     // Create mock embeddings (in real implementation, use TensorFlow)
+    const embeddings = chunks.map(() => Array(512).fill(0).map(() => Math.random()));
+
+    // Update file with chunks and embeddings
+    file.chunks = chunks;
+    file.embeddings = embeddings;
+    await file.save();
+
+    return { chunks, embeddings };
+  }
+
+  async processImage(fileId: string): Promise<{ chunks: string[], embeddings: number[][] }> {
+    const file = await File.findById(fileId);
+    if (!file) {
+      throw new Error('File not found');
+    }
+
+    if (!file.mimeType.startsWith('image/')) {
+      throw new Error('File is not an image');
+    }
+
+    // For now, we'll create mock image description
+    // In a real implementation, you would use image analysis AI here
+    const mockDescription = `This is an image file: ${file.originalName}. 
+    In a real implementation, this would be a detailed description of the image content.
+    The description would include objects, people, text, colors, and other visual elements.
+    
+    This mock description simulates what an AI vision model would extract from the image.
+    It provides context that can be used for searching and understanding the image content.`;
+    
+    // Split description into chunks
+    const chunks = this.splitTextIntoChunks(mockDescription, 1000);
+    
+    // Create mock embeddings
     const embeddings = chunks.map(() => Array(512).fill(0).map(() => Math.random()));
 
     // Update file with chunks and embeddings

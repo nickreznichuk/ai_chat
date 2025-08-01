@@ -11,19 +11,10 @@ getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
 Found files: 0
 getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
 Found files: 0
-getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
-Found files: 0
-uploadFile called, req.file: Mykola Reznichuk (1) (1).pdf req.body: [Object: null prototype] { chatId: '688c9ce9ed9eb5400294fa7c' }
+uploadFile called, req.file: photo_2025-07-25 11.51.40 (2).jpeg req.body: [Object: null prototype] { chatId: '688c9ce9ed9eb5400294fa7c' }
 chatId from request: 688c9ce9ed9eb5400294fa7c
-File saved with ID: new ObjectId('688cef3f87e0e7b8027d8b46')
+File saved with ID: new ObjectId('688cf36b8d4385f03b0e44e2')
 getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
 Found files: 1
 getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
-Found files: 0
-uploadFile called, req.file: Mykola Reznichuk (1) (1).pdf req.body: [Object: null prototype] { chatId: '688c9ce9ed9eb5400294fa7c' }
-chatId from request: 688c9ce9ed9eb5400294fa7c
-File saved with ID: new ObjectId('688cf02287e0e7b8027d8b4f')
-getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
 Found files: 1
-getFilesByChat called with chatId: 688c9ce9ed9eb5400294fa7c
-Found files: 0

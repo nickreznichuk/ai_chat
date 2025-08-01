@@ -13,14 +13,13 @@ A modern AI chat application built with React, TypeScript, and Express, featurin
 - **Function Calling**: Automatic detection and execution of functions from natural language
 
 ### 📄 Document Analysis (RAG System)
-- **PDF Upload**: Drag & drop PDF file upload with size validation
-- **Document Processing**: Automatic text extraction and chunking for vector search
-- **AI-Powered Search**: Ask questions about uploaded documents using semantic search
-- **Context-Aware Responses**: AI provides answers based on relevant document sections
-- **File Management**: View, process, and delete uploaded documents
+- **File Upload**: Upload PDF documents and images for AI processing
+- **General File Processing**: AI automatically analyzes and processes uploaded files
+- **RAG Queries**: Ask specific questions about uploaded documents using AI-powered search
 - **Cross-File Search**: Search across all uploaded documents simultaneously
 - **File Statistics**: View detailed statistics about uploaded files
 - **Metadata Management**: Add titles, descriptions, and tags to files
+- **Separate RAG Interface**: Dedicated button for document queries with context-aware responses
 
 ### 🎤 Voice Input
 - **Speech-to-Text**: Local voice transcription using Whisper.cpp
@@ -357,12 +356,15 @@ curl http://localhost:3001/api/voice/status
 - **Visual Feedback**: Watch the recording animation and processing indicators
 
 ### File Management
-- **View Files**: See all uploaded documents in the chat interface
-- **Process Files**: Convert PDFs to searchable content
-- **Delete Files**: Remove files you no longer need
-- **Search Content**: Ask questions about specific documents
-- **Cross-File Search**: Search across all documents simultaneously
-- **File Statistics**: View detailed information about your documents
+1. **Upload Files**: Click the upload button (📁) next to the text input to upload PDFs or images
+2. **General Processing**: Files are automatically processed by AI for general analysis
+3. **RAG Queries**: Click the query button (🔍) to ask specific questions about your documents
+4. **View Files**: See all uploaded documents in the chat interface
+5. **Process Files**: Convert files to searchable content
+6. **Delete Files**: Remove files you no longer need
+7. **Search Content**: Ask questions about specific documents
+8. **Cross-File Search**: Search across all documents simultaneously
+9. **File Statistics**: View detailed information about your documents
 
 ## 🔧 Configuration
 

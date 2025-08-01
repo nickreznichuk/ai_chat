@@ -112,7 +112,7 @@ export const fileApi = {
     });
   },
 
-  processPDF: (fileId: string) => apiRequest<{ success: boolean; chunks: string[]; chunkCount: number }>(`/files/${fileId}/process`, {
+  processFile: (fileId: string) => apiRequest<{ success: boolean; chunks: string[]; chunkCount: number }>(`/files/${fileId}/process`, {
     method: 'POST',
   }),
 

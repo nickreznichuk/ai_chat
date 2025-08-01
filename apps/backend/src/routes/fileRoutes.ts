@@ -6,7 +6,7 @@ const fileController = new FileController();
 
 // File routes
 router.post('/files/upload', fileController.uploadMiddleware, (req, res) => fileController.uploadFile(req, res));
-router.post('/files/:fileId/process', (req, res) => fileController.processPDF(req, res));
+router.post('/files/:fileId/process', (req, res) => fileController.processFile(req, res));
 router.post('/files/:fileId/search', (req, res) => fileController.searchInFile(req, res));
 router.get('/chats/:chatId/files', (req, res) => fileController.getFilesByChat(req, res));
 router.delete('/files/:fileId', (req, res) => fileController.deleteFile(req, res));

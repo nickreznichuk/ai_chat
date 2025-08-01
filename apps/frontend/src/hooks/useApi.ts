@@ -16,7 +16,7 @@ export const queryKeys = {
   files: (chatId?: string | null) => ['files', chatId],
   fileStats: (chatId?: string | null) => ['fileStats', chatId],
   functions: ['functions'],
-} as const;
+};
 
 // Status hooks
 export const useStatus = () => {
@@ -158,11 +158,11 @@ export const useUploadFile = () => {
   });
 };
 
-export const useProcessPDF = () => {
+export const useProcessFile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (fileId: string) => fileApi.processPDF(fileId),
+    mutationFn: (fileId: string) => fileApi.processFile(fileId),
     onSuccess: (_, fileId) => {
       // Invalidate files query to refresh file status
       queryClient.invalidateQueries({ queryKey: queryKeys.files });

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useChat, useSendMessageNew, useGenerateResponse, useStatus, useFilesByChat, useUploadFile, useProcessPDF, useDeleteFile, useSearchInFile, useParseAndExecuteFunctions } from '../hooks/useApi';
+import { useChat, useSendMessageNew, useGenerateResponse, useStatus, useFilesByChat, useUploadFile, useProcessFile, useDeleteFile, useSearchInFile, useParseAndExecuteFunctions, useSearchAcrossAllFiles } from '../hooks/useApi';
 import { ChatPageSkeleton } from '../components/SkeletonLoader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { VoiceInput } from '../components/VoiceInput';
 import { ChatSidebar } from '../components/ChatSidebar';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { FileUploadButton } from '../components/FileUploadButton';
+import { RagQueryButton } from '../components/RagQueryButton';
 import { FileList } from '../components/FileList';
 import { FunctionCallDisplay } from '../components/FunctionCallDisplay';
 import type { Message, MessageStatus, Chat } from 'shared/src/types';
@@ -23,10 +24,11 @@ export const ChatPage: React.FC = () => {
   const sendMessageMutation = useSendMessageNew();
   const generateResponseMutation = useGenerateResponse();
   const uploadFileMutation = useUploadFile();
-  const processPDFMutation = useProcessPDF();
+  const processFileMutation = useProcessFile();
   const deleteFileMutation = useDeleteFile();
   const searchInFileMutation = useSearchInFile();
   const parseAndExecuteFunctionsMutation = useParseAndExecuteFunctions();
+  const searchAcrossAllFilesMutation = useSearchAcrossAllFiles();
   
   const [inputMessage, setInputMessage] = useState('');
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
@@ -286,7 +288,7 @@ export const ChatPage: React.FC = () => {
   const handleProcessFile = async (fileId: string) => {
     setProcessingFileId(fileId);
     try {
-      await processPDFMutation.mutateAsync(fileId);
+      await processFileMutation.mutateAsync(fileId);
     } catch (error) {
       console.error('Error processing file:', error);
     } finally {
@@ -367,6 +369,75 @@ export const ChatPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error executing functions:', error);
+    }
+  };
+
+  const handleRagQuery = async (query: string) => {
+    if (!chatId) return;
+    
+    try {
+      const result = await searchAcrossAllFilesMutation.mutateAsync({ chatId, query });
+      if (result.success && result.results.length > 0) {
+        // Create a context message with the relevant chunks from all files
+        const contextParts = result.results.map((fileResult: any) => {
+          return `From ${fileResult.fileName}:\n${fileResult.chunks.join('\n\n')}`;
+        });
+        
+        const contextMessage = `Based on the uploaded documents, here are the relevant sections:\n\n${contextParts.join('\n\n---\n\n')}\n\nQuestion: ${query}`;
+        
+        // Send the context as a user message
+        const userMessage: Message = {
+          role: 'user',
+          content: contextMessage
+        };
+
+        const newMessages = [...localMessages, userMessage];
+        setLocalMessages(newMessages);
+
+        // Send message to backend
+        const sendResult = await sendMessageMutation.mutateAsync({
+          messages: newMessages,
+          model: 'gemma3n:latest',
+          chatId
+        });
+
+        if (sendResult.success && sendResult.messageId) {
+          const messageId = sendResult.messageId;
+          
+          // Generate AI response
+          await generateResponseMutation.mutateAsync({
+            messageId: messageId,
+            chatId: chatId,
+            model: 'gemma3n:latest'
+          });
+        }
+      } else {
+        // If no results found, send a simple query
+        const userMessage: Message = {
+          role: 'user',
+          content: `I searched for "${query}" in my uploaded documents but found no relevant information. Can you help me with this question?`
+        };
+
+        const newMessages = [...localMessages, userMessage];
+        setLocalMessages(newMessages);
+
+        const sendResult = await sendMessageMutation.mutateAsync({
+          messages: newMessages,
+          model: 'gemma3n:latest',
+          chatId
+        });
+
+        if (sendResult.success && sendResult.messageId) {
+          const messageId = sendResult.messageId;
+          await generateResponseMutation.mutateAsync({
+            messageId: messageId,
+            chatId: chatId,
+            model: 'gemma3n:latest'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error processing RAG query:', error);
     }
   };
 
@@ -577,6 +648,12 @@ export const ChatPage: React.FC = () => {
               <FileUploadButton
                 onFileUpload={handleFileUpload}
                 disabled={isSending || isGenerating || !status?.ollamaAvailable || uploadFileMutation.isPending}
+              />
+              
+              {/* RAG Query Button */}
+              <RagQueryButton
+                onQuerySubmit={handleRagQuery}
+                disabled={isSending || isGenerating || !status?.ollamaAvailable || searchAcrossAllFilesMutation.isPending}
               />
               
               <textarea

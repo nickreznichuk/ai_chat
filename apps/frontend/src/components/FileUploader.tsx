@@ -6,28 +6,40 @@ interface FileUploaderProps {
   onFileProcess?: (fileId: string) => void;
   disabled?: boolean;
   className?: string;
+  acceptTypes?: string[];
+  maxSize?: number; // in bytes
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
   onFileUpload,
   onFileProcess,
   disabled = false,
-  className = ''
+  className = '',
+  acceptTypes = ['.pdf'],
+  maxSize = 10 * 1024 * 1024
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file || disabled) return;
 
-    // Check if file is PDF
-    if (file.type !== 'application/pdf') {
-      alert('Only PDF files are supported');
+    // Check if file type is supported
+    const isSupported = acceptTypes.some(type => {
+      if (type === 'image/*') {
+        return file.type.startsWith('image/');
+      }
+      return file.type === type;
+    });
+
+    if (!isSupported) {
+      alert('Only PDF files and images are supported');
       return;
     }
 
-    // Check file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+    // Check file size
+    const maxSizeMB = maxSize / (1024 * 1024);
+    if (file.size > maxSize) {
+      alert(`File size must be less than ${maxSizeMB}MB`);
       return;
     }
 
@@ -37,7 +49,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       console.error('Error uploading file:', error);
       alert('Failed to upload file');
     }
-  }, [onFileUpload, disabled]);
+  }, [onFileUpload, disabled, acceptTypes, maxSize]);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -57,20 +69,20 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf"
+        accept={acceptTypes.join(',')}
         onChange={handleFileInputChange}
         className="hidden"
         disabled={disabled}
       />
       
-      <button
-        onClick={handleClick}
-        disabled={disabled}
-        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
-      >
-        <span>📄</span>
-        <span>Upload PDF</span>
-      </button>
+                        <button
+                    onClick={handleClick}
+                    disabled={disabled}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    <span>📁</span>
+                    <span>Upload File</span>
+                  </button>
     </div>
   );
 }; 

@@ -19,17 +19,17 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Allow PDF files
-    if (file.mimetype === 'application/pdf') {
+    // Allow PDF files and images
+    if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(new Error('Only PDF files and images are allowed'));
     }
   }
 });
@@ -79,11 +79,11 @@ export class FileController {
     }
   }
 
-  async processPDF(req: Request, res: Response): Promise<void> {
+  async processFile(req: Request, res: Response): Promise<void> {
     try {
       const { fileId } = req.params;
       
-      const result = await this.fileService.processPDF(fileId);
+      const result = await this.fileService.processFile(fileId);
       
       res.json({
         success: true,
@@ -91,9 +91,9 @@ export class FileController {
         chunkCount: result.chunks.length
       });
     } catch (error) {
-      console.error('Error processing PDF:', error);
+      console.error('Error processing file:', error);
       res.status(500).json({
-        error: 'Failed to process PDF',
+        error: 'Failed to process file',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
